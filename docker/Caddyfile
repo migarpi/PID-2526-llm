@@ -1,0 +1,26 @@
+{
+  admin off
+}
+
+:80 {
+  encode gzip zstd
+
+  # Rutas de la API FastAPI → backend
+  @backend path /health /send_message /send_message_stream /sessions/* /docs /openapi.json
+
+  handle @backend {
+    header Cache-Control "no-cache"
+    reverse_proxy backend:8000 {
+      transport http {
+        read_buffer  4096
+        write_buffer 4096
+      }
+      header_up X-Forwarded-Proto {scheme}
+      header_up X-Forwarded-For {remote_host}
+      header_up X-Forwarded-Host {host}
+    }
+  }
+
+  # Todo lo demás → Next.js frontend
+  reverse_proxy frontend:3000
+}

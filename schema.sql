@@ -1,0 +1,23 @@
+CREATE TABLE IF NOT EXISTS users (
+  user_id SERIAL PRIMARY KEY,
+  username VARCHAR(50) UNIQUE NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS sessions (
+  session_id SERIAL PRIMARY KEY,
+  user_id INTEGER NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+  start_time TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+  end_time TIMESTAMPTZ
+);
+
+CREATE TABLE IF NOT EXISTS messages (
+  message_id SERIAL PRIMARY KEY,
+  session_id INTEGER NOT NULL REFERENCES sessions(session_id) ON DELETE CASCADE,
+  sender VARCHAR(16) NOT NULL CHECK (sender IN ('User','AI')),
+  message_text TEXT NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_messages_session_time
+  ON messages(session_id, created_at DESC);

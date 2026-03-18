@@ -1,0 +1,33 @@
+{
+  email you@example.com
+}
+
+# Sustituye chat.tudominio.com por tu dominio real
+chat.tudominio.com {
+  encode gzip zstd
+
+  # Frontend Next.js
+  reverse_proxy frontend:3000
+
+  # Proxy de la API en /api/* hacia FastAPI
+  @api path /api/*
+
+  handle @api {
+    # SSE y streaming: desactiva buffering
+    header {
+      # Evita interferencias con SSE
+      -Server
+      Cache-Control "no-cache"
+    }
+    reverse_proxy backend:8000 {
+      transport http {
+        read_buffer  4096
+        write_buffer 4096
+      }
+      # Cabeceras útiles
+      header_up X-Forwarded-Proto {scheme}
+      header_up X-Forwarded-For {remote_host}
+      header_up X-Forwarded-Host {host}
+    }
+  }
+}

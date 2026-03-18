@@ -1,0 +1,90 @@
+version: "3.9"
+
+services:
+  db:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: ${PGUSER}
+      POSTGRES_PASSWORD: ${PGPASSWORD}
+      POSTGRES_DB: ${PGDATABASE}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./schema.sql:/docker-entrypoint-initdb.d/01-schema.sql
+      - ./seed.sql:/docker-entrypoint-initdb.d/02-seed.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${PGUSER} -d ${PGDATABASE}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  ollama:
+    image: ollama/ollama:latest
+    restart: unless-stopped
+    volumes:
+      - ollama:/root/.ollama
+    ports:
+      - "11434:11434"   # opcional exponerlo fuera; en prod puedes quitar esta línea
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    environment:
+      DATABASE_URL: postgresql://${PGUSER}:${PGPASSWORD}@db:5432/${PGDATABASE}
+      OLLAMA_HOST: http://ollama:11434
+      MODEL: ${MODEL:-mistral}
+      CONTEXT_LIMIT: ${CONTEXT_LIMIT:-12}
+    depends_on:
+      db:
+        condition: service_healthy
+      ollama:
+        condition: service_started
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/health')\""]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+
+  frontend:
+    build:
+      context: .
+      dockerfile: chat-frontend/Dockerfile
+      args:
+        NEXT_PUBLIC_USER_ID: ${NEXT_PUBLIC_USER_ID:-1}
+        NEXT_PUBLIC_API_BASE: ""   # usamos proxy / misma origin
+    environment:
+      # Variables de admin (Basic Auth) usadas en middleware
+      ADMIN_USER: ${ADMIN_USER}
+      ADMIN_PASS: ${ADMIN_PASS}
+      # Conexión Postgres para las API routes del admin panel
+      POSTGRES_URL: postgresql://${PGUSER}:${PGPASSWORD}@db:5432/${PGDATABASE}
+    depends_on:
+      backend:
+        condition: service_healthy
+      db:
+        condition: service_healthy
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./docker/Caddyfile:/etc/caddy/Caddyfile
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - frontend
+      - backend
+
+volumes:
+  pgdata:
+  ollama:
+  caddy_data:
+  caddy_config:
