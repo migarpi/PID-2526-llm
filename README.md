@@ -26,7 +26,7 @@ Usuario → Caddy (:80) → Next.js frontend (:3000)
 ### 1. Clonar el repositorio
 
 ```bash
-git clone <url-del-repo>
+git clone https://github.com/migarpi/PID-2526-llm.git
 cd PID_2526_llm
 ```
 
