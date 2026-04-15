@@ -158,3 +158,7 @@ Espera a que PostgreSQL esté listo (el healthcheck puede tardar unos segundos) 
 docker compose -f docker-compose2.yaml logs -f backend
 docker compose -f docker-compose2.yaml logs -f ollama
 ```
+
+## Financiación
+
+Proyecto PIEC-3900926 financiado por el Vicerectorado de Formación Permanente, Transformación Docente y Ocupación de la Universitat de València.
